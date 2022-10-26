@@ -1,0 +1,132 @@
+1- Explique o funcionamento de um trigger em banco de dados
+relacionais(PostgreSQL), como podemos aplicar o conceito de trigger em uma solução de
+banco de dados e cite quais são os eventos que são disparados na ação de um trigger.
+RESPOSTA:
+ Gatilho ou trigger é um recurso de programação executado sempre que o evento associado ocorrer.
+ Trigger é um tipo especial de procedimento armazenado, que é executado sempre que há uma tentativa de modificar os dados de uma tabela que é protegida por ele.
+Pode ser disparada em: insert, update, delete.
+
+
+2- Usando o banco de dados PROVA_SENAI, desenvolva um select que retorne a
+soma das vendas, o valor médio de vendas, o valor mínimo e o valor máximo de vendas, no
+período de janeiro de 2020 até janeiro de 2022, totalizando por cliente.
+
+RESPOSTA:
+ SELECT 
+	ID_CLIENTE,
+	SUM(VALOR) AS SOMA,
+	AVG(VALOR) AS MEDIA,
+	MIN(VALOR) AS MINIMO,
+	MIN(VALOR) AS MAXIMO
+FROM VENDA
+WHERE DATA_VENDA BETWEEN '20200101' AND '20220131'
+GROUP BY ID_CLIENTE
+
+3-A)Com base no modelo acima, desenvolva o script DDL para criação das entidades
+acima.
+
+CREATE TABLE PESSOA(
+    ID_PESSOA INTEGER PRIMARY KEY,
+	NOME VARCHAR(100) UNIQUE,
+	CPF VARCHAR(11) UNIQUE,
+	RG VARCHAR(8) UNIQUE,
+	DATA_NASCIMENTO DATE
+)
+
+CREATE TABLE PESSOA_REMOVIDA(
+	ID_PESSOA INTEGER PRIMARY KEY,
+	NOME VARCHAR(100),
+	CPF VARCHAR(11) UNIQUE,
+	RG VARCHAR(8) UNIQUE,
+	DATA_NASCIMENTO DATE,
+	DATA_HORA_REMOCAO TIMESTAMP
+)
+
+CREATE TABLE PESSOA_HISTORICO(
+	ID_PESSOA INTEGER PRIMARY KEY,
+	NOME VARCHAR(100),
+	CPF VARCHAR(11) UNIQUE,
+	RG VARCHAR(8) UNIQUE,
+	DATA_NASCIMENTO DATE,
+	DATA_HORA_ATUALIZACAO TIMESTAMP
+(
+
+3-B)Com base no modelo acima, desenvolva um trigger e uma função de trigger que irá
+realizar a operação de “cópia” histórica dos dados na tabela (pessoa_historico) toda
+vez que executar o comando update na tabela (pessoa).
+
+CREATE OR REPLACE FUNCTION TF_PESSOA_HISTORICO()
+RETURNS TRIGGER AS $$
+    	BEGIN 
+		INSERT INTO PESSOA_HISTORICO(ID_PESSOA, NOME, CPF, RG, DATA_NASCIMENTO, DATA_HORA_ATUALIZACAO)
+		VALUES(NEW.ID_PESSOA, OLD.NOME, OLD.CPF, OLD.RG, OLD.DATA_NASCIMENTO, CURRENT_TIMESTAMP);
+		
+	RETURN NULL;
+	END;
+$$ LANGUAGE PLPGSQL;
+
+CREATE TRIGGER TR_HISTORICO
+AFTER UPDATE ON PESSOA
+FOR EACH ROW
+EXECUTE FUNCTION TF_PESSOA_HISTORICO();
+
+3-C)Com base no modelo acima, desenvolva um trigger e uma função de trigger que irá
+realizar a operação de “cópia”, de eliminação do registro (pessoa_removida) toda vez
+que executar o comando delete na tabela (pessoa).
+
+CREATE OR REPLACE FUNCTION TF_PESSOA_REMOVIDA()
+RETURNS TRIGGER AS $$
+    	BEGIN 
+		INSERT INTO PESSOA_REMOVIDA(ID_PESSOA, NOME, CPF, RG, DATA_NASCIMENTO, DATA_HORA_ATUALIZACAO)
+		VALUES(NEW.ID_PESSOA, OLD.NOME, OLD.CPF, OLD.RG, OLD.DATA_NASCIMENTO, CURRENT_TIMESTAMP);
+		
+	RETURN NULL;
+	END;
+$$ LANGUAGE PLPGSQL;
+
+CREATE TRIGGER TR_REMOCAO
+AFTER DELETE ON PESSOA
+FOR EACH ROW
+EXECUTE FUNCTION TF_PESSOA_REMOVIDA();
+
+4- A)Desenvolva o script DDL para criação e salve:
+
+CREATE TABLE PRODUTO(
+	ID_PRODUTO INTEGER,
+	DESCRICAO_PRODUTO VARCHAR(100),
+	ID_CATEGORIA INTEGER
+);
+
+CREATE TABLE CATEGORIA(
+	ID_CATEGORIA INTEGER,
+	DESCRICAO_CATEGORIA VARCHAR(100)
+);
+
+4- B)Desenvolva o script DML para manipulação dos dados:
+
+INSERT INTO CATEGORIA VALUES(105, 'PERECÍVEL');
+INSERT INTO CATEGORIA VALUES(107, 'LIMPEZA\HIGIENE');
+INSERT INTO CATEGORIA VALUES(109, 'ALIMENTOS INDUSTRIALIZADOS');
+
+INSERT INTO PRODUTO VALUES(10545, 'BANANA CATURRA', 105);
+INSERT INTO PRODUTO VALUES(10647, 'SABONETE DOVE', 107);
+INSERT INTO PRODUTO VALUES(10958, 'COLA-COLA 2 LITROS', NULL);
+INSERT INTO PRODUTO VALUES(10997, 'SABONETE LIVY', 107);
+
+4- C)Crie uma VIEW simples para encapsular o script “Resultado da Consulta”:
+
+CREATE VIEW RESULTADO_CONSULTA AS
+SELECT PRODUTO.*, COALESCE(CATEGORIA.DESCRICAO_CATEGORIA, '<CATEGORIA NÃO INFORMADA>')
+FROM PRODUTO
+LEFT JOIN CATEGORIA ON(PRODUTO.ID_CATEGORIA = CATEGORIA.ID_CATEGORIA)
+
+
+
+
+
+
+
+
+
+
+
